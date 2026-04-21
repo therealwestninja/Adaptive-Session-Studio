@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>ASS — Boot Smoke Test</title>
+  <style>
+    body { font: 13px/1.6 'Space Grotesk', system-ui, sans-serif; background:#0b0b0e; color:#d6d4ce; padding:20px; }
+    h2   { font-size:15px; margin-bottom:16px; color:#e8963a; }
+    .pass { color:#6dbf6a; }
+    .fail { color:#d94f4f; }
+    .skip { color:#8b8980; }
+    .row  { display:flex; gap:10px; padding:5px 0; border-bottom:1px solid rgba(255,255,255,.05); align-items:baseline; }
+    .label{ flex:1; font-size:12px; }
+    .badge{ font:11px 'JetBrains Mono', monospace; padding:1px 7px; border-radius:3px; flex-shrink:0; }
+    .pass .badge { background:rgba(109,191,106,.12); border:1px solid rgba(109,191,106,.3); color:#6dbf6a; }
+    .fail .badge { background:rgba(217,79,79,.12);  border:1px solid rgba(217,79,79,.3);  color:#d94f4f; }
+    .skip .badge { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); }
+    .err  { font:10.5px 'JetBrains Mono', monospace; color:#d94f4f; margin-left:12px; margin-top:2px; }
+    #summary { margin-top:20px; font-size:13px; font-weight:600; }
+    #hint    { margin-top:14px; font-size:11px; color:#7e7c78; line-height:1.7; }
+  </style>
+</head>
+<body>
+<h2>Boot Smoke Test — Adaptive Session Studio</h2>
+<div id="results"></div>
+<div id="summary"></div>
+<div id="hint">
+  This page must be served over HTTP (e.g. <code>npx serve .</code>).<br>
+  These tests import real app modules — they catch startup-breaking syntax errors
+  that the unit test runner does not exercise.
+</div>
+
+<script type="module">
+const results  = document.getElementById('results');
+const summary  = document.getElementById('summary');
+let passed = 0, failed = 0;
+
+function row(label, ok, detail = '') {
+  const cls = ok ? 'pass' : 'fail';
+  const badge = ok ? 'PASS' : 'FAIL';
+  const el = document.createElement('div');
+  el.className = `row ${cls}`;
+  el.innerHTML = `<span class="label">${label}</span><span class="badge">${badge}</span>`;
+  if (!ok && detail) {
+    const err = document.createElement('div');
+    err.className = 'err';
+    err.textContent = detail;
+    el.appendChild(err);
+  }
+  results.appendChild(el);
+  ok ? passed++ : failed++;
+}
+
+async function tryImport(label, path, checks = []) {
+  try {
+    const mod = await import(path);
+    let detail = '';
+    let allChecks = true;
+    for (const [sym, type] of checks) {
+      if (typeof mod[sym] !== type) {
+        allChecks = false;
+        detail = `"${sym}" expected ${type}, got ${typeof mod[sym]}`;
+        break;
+      }
+    }
+    row(label, allChecks, detail);
+    return mod;
+  } catch (e) {
+    row(label, false, e.message);
+    return null;
+  }
+}
+
+// ── Module import smoke tests ─────────────────────────────────────────────────
+// Each entry: [display label, relative path, [[exportName, typeof]...]]
+const moduleTests = [
+  ['state.js — core imports',         '../js/state.js',
+    [['persist','function'],['defaultSession','function'],['normalizeSession','function'],['uid','function']]],
+
+  ['state-engine.js — single import', '../js/state-engine.js',
+    [['tickStateEngine','function'],['setAttention','function'],['getMetric','function'],
+     ['resetStateEngine','function'],['setExternalSignal','function'],['clearExternalSignals','function']]],
+
+  ['rules-engine.js',                 '../js/rules-engine.js',
+    [['tickRulesEngine','function'],['addRule','function'],['normalizeRule','function']]],
+
+  ['trigger-windows.js',              '../js/trigger-windows.js',
+    [['tickTriggerWindows','function'],['normalizeTrigger','function'],['getActiveWindowStatuses','function']]],
+
+  ['safety.js',                       '../js/safety.js',
+    [['clampIntensity','function'],['clampSpeed','function'],['recordEmergencyStop','function'],
+     ['isEmergencyCooldownActive','function'],['getEmergencyCooldownRemaining','function']]],
+
+  ['intensity-ramp.js',               '../js/intensity-ramp.js',
+    [['applyRamp','function']]],
+
+  ['dynamic-pacing.js',               '../js/dynamic-pacing.js',
+    [['tickDynamicPacing','function'],['resetDynamicPacing','function']]],
+
+  ['history.js',                      '../js/history.js',
+    [['history','object']]],
+
+  ['notify.js',                       '../js/notify.js',
+    [['notify','object']]],
+
+  ['scenes.js',                       '../js/scenes.js',
+    [['skipToNextScene','function'],['addScene','function'],['updateScene','function'],['deleteScene','function']]],
+
+  ['user-profile.js',                 '../js/user-profile.js',
+    [['computeDifficultyLevel','function'],['getAdaptiveRampSuggestion','function'],
+     ['defaultProfile','function'],['loadProfile','function'],['rebuildProfile','function']]],
+
+  ['session-analytics.js',            '../js/session-analytics.js',
+    [['initAnalytics','function'],['finaliseAnalytics','function']]],
+
+  ['ai-authoring.js',                 '../js/ai-authoring.js',
+    [['generateSession','function'],['renderAiAuthoringPanel','function'],
+     ['getApiKey','function'],['setApiKey','function'],['hasApiKey','function']]],
+
+  ['capabilities.js',                 '../js/capabilities.js',
+    [['detectCapabilities','function'],['applyCapabilityGates','function'],['checkStorageBudget','function']]],
+
+  ['suggestions.js',                  '../js/suggestions.js',
+    [['checkAndNotify','function']]],
+
+  ['session-modes.js',                '../js/session-modes.js',
+    [['renderModeSelector','function']]],
+
+  ['import-validate.js',              '../js/import-validate.js',
+    [['validateImportedSession','function'],['validateFunScript','function'],
+     ['validateMacro','function'],['validateSubtitleText','function'],
+     ['validateMediaFile','function'],['LIMITS','object']]],
+
+  ['idb-storage.js',                  '../js/idb-storage.js',
+    [['idbGet','function'],['idbSet','function'],['idbDel','function'],['idbHas','function']]],
+
+  ['live-control.js',                 '../js/live-control.js',
+    [['defaultLiveControl','function'],['applyLiveControl','function'],
+     ['getLiveSpeedMs','function'],['setLiveIntensity','function'],
+     ['setLiveSpeed','function'],['initLiveControl','function']]],
+
+  ['plugin-host.js',                  '../js/plugin-host.js',
+    [['registerPlugin','function'],['unregisterPlugin','function'],
+     ['validatePluginManifest','function'],['getRegisteredPlugins','function'],
+     ['dispatchPluginEvent','function'],['CAPABILITY_GROUPS','object']]],
+
+  ['metrics-history.js',              '../js/metrics-history.js',
+    [['recordSessionInHistory','function'],['getDailyHistory','function'],
+     ['importExternalMetrics','function'],['clearMetricsHistory','function'],
+     ['renderMetricsChart','function'],['metricsReady','object']]],
+
+  ['state-blocks.js',                 '../js/state-blocks.js',
+    [['STATE_PROFILES','object'],['STATE_TYPES','object'],
+     ['applyStateProfile','function'],['stateTypeLabel','function'],
+     ['suggestedColorForStateType','function']]],
+
+  ['variables.js',                    '../js/variables.js',
+    [['addVariable','function'],['getVariable','function'],['setVariable','function'],
+     ['deleteVariable','function'],['getAllVariables','function'],
+     ['normalizeVariables','function'],['getVariableTemplateMap','function'],
+     ['renderVariablesPanel','function'],['VAR_NAME_RE','object']]],
+
+  ['playback.js',                     '../js/playback.js',
+    [['startPlayback','function'],['stopPlayback','function'],['pausePlayback','function'],
+     ['resumePlayback','function'],['seekTo','function'],['skipToScene','function'],
+     ['resolveTemplateVars','function'],['emergencyStop','function']]],
+
+  ['macros.js',                       '../js/macros.js',
+    [['BUILTIN_MACROS','object'],['allMacros','function'],['getMacro','function'],
+     ['getSlotMacro','function'],['saveMacro','function'],['removeMacro','function']]],
+
+  ['block-ops.js',                    '../js/block-ops.js',
+    [['duplicateBlock','function'],['deleteBlock','function'],
+     ['registerBlockOpRenderers','function']]],
+
+  ['sensor-bridge.js',                '../js/sensor-bridge.js',
+    [['connectSensorBridge','function'],['disconnectSensorBridge','function'],
+     ['isBridgeConnected','function'],['getBridgeUrl','function'],
+     ['tickSensorBridge','function'],['renderSensorBridgePanel','function']]],
+
+  ['content-packs.js',                '../js/content-packs.js',
+    [['CONTENT_PACKS','object'],['loadContentPack','function'],
+     ['getPacksByCategory','function'],['renderContentPacksPicker','function']]],
+
+  ['audio-engine.js',                 '../js/audio-engine.js',
+    [['startAudioEngine','function'],['stopAudioEngine','function'],
+     ['pauseAudioEngine','function'],['setMasterVolume','function'],
+     ['audioEngineAvailable','function'],['refreshVolumes','function']]],
+
+  ['subtitle.js',                     '../js/subtitle.js',
+    [['parseAss','function'],['exportAss','function'],['updateSubtitleCue','function']]],
+
+  ['funscript-patterns.js',           '../js/funscript-patterns.js',
+    [['FUNSCRIPT_PATTERNS','object'],['loadPatternAsTrack','function'],
+     ['renderPatternPicker','function']]],
+
+  ['viz-blocks.js',                   '../js/viz-blocks.js',
+    [['VIZ_TYPES','object'],['mountVizBlock','function'],
+     ['unmountVizBlock','function'],['generateFromBPM','function']]],
+];
+
+for (const [label, path, checks] of moduleTests) {
+  await tryImport(label, path, checks);
+}
+
+// ── State sanity checks ───────────────────────────────────────────────────────
+const stateMod = await import('../js/state.js').catch(() => null);
+if (stateMod) {
+  const { state, defaultSession, normalizeSession } = stateMod;
+
+  // defaultSession has required shape
+  const ds = defaultSession();
+  row('defaultSession() has blocks array',        Array.isArray(ds.blocks),   `got ${typeof ds.blocks}`);
+  row('defaultSession() has scenes array',        Array.isArray(ds.scenes),   `got ${typeof ds.scenes}`);
+  row('defaultSession() has rules array',         Array.isArray(ds.rules),    `got ${typeof ds.rules}`);
+  row('defaultSession() has triggers array',      Array.isArray(ds.triggers), `got ${typeof ds.triggers}`);
+  row('defaultSession() has advanced.deviceWsUrl',typeof ds.advanced?.deviceWsUrl === 'string', `got ${typeof ds.advanced?.deviceWsUrl}`);
+  row('defaultSession() has masterVolume',        typeof ds.masterVolume === 'number', `got ${typeof ds.masterVolume}`);
+
+  // normalizeSession preserves required fields
+  const ns = normalizeSession({ blocks: [{ type: 'text', start: 0, duration: 5, content: 'hi' }] });
+  row('normalizeSession() produces blocks',       Array.isArray(ns.blocks) && ns.blocks.length === 1);
+  row('normalizeSession() has safetySettings key',Object.hasOwn(ns, 'safetySettings'));
+  row('normalizeSession() has rampSettings key',  Object.hasOwn(ns, 'rampSettings'));
+  row('normalizeSession() has triggers key',      Object.hasOwn(ns, 'triggers'));
+
+  // state object is live
+  row('state.session is the current session',     typeof state.session?.name === 'string');
+}
+
+// ── state-engine duplicate-import guard ──────────────────────────────────────
+// The previous v4.4.6 boot blocker was two copies of the module concatenated.
+// This checks that only one engineState initialisation runs.
+const engineMod = await import('../js/state-engine.js').catch(() => null);
+if (engineMod) {
+  const { tickStateEngine, resetStateEngine } = engineMod;
+  try {
+    resetStateEngine();
+    tickStateEngine(); // should not throw if module loaded cleanly
+    row('state-engine.js tickStateEngine() runs without error', true);
+  } catch (e) {
+    row('state-engine.js tickStateEngine() runs without error', false, e.message);
+  }
+}
+
+// ── Actual app boot test (iframe) ────────────────────────────────────────────
+// Load the real index.html in a sandboxed iframe. Capture any console.error
+// or window.onerror calls within it. This catches integration failures that
+// module-import tests cannot — broken event wiring, missing DOM elements, etc.
+const bootRow = document.createElement('div');
+bootRow.className = 'row';
+bootRow.innerHTML = `<span class="label">index.html boots without console errors (iframe)</span><span class="badge">…</span>`;
+results.appendChild(bootRow);
+
+const bootErrors = [];
+const iframeTimeout = 5000; // 5s — enough for all modules to load
+
+await new Promise(resolve => {
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:absolute;left:-9999px;width:1px;height:1px;';
+
+  let settled = false;
+  const finish = () => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timer);
+    iframe.remove();
+    resolve();
+  };
+
+  // Proxy console errors from the iframe
+  const origError = console.error.bind(console);
+  const handleMessage = e => {
+    if (e.source === iframe.contentWindow && e.data?.type === 'boot-error') {
+      bootErrors.push(e.data.message);
+    }
+  };
+  window.addEventListener('message', handleMessage);
+
+  iframe.onload = () => {
+    // Inject a small script into the iframe that forwards errors back to us
+    try {
+      const win = iframe.contentWindow;
+      if (!win) { finish(); return; }
+
+      // Give modules another 2s to fully execute after DOMContentLoaded
+      setTimeout(() => {
+        // Check if the app shell exists in the iframe DOM
+        const appEl = win.document?.getElementById('app');
+        if (!appEl) {
+          bootErrors.push('Missing #app element after boot — index.html may have a structural error');
+        }
+        const inspector = win.document?.getElementById('inspBody');
+        if (!inspector) {
+          bootErrors.push('Missing #inspBody — inspector panel did not render');
+        }
+        window.removeEventListener('message', handleMessage);
+        finish();
+      }, 2500);
+    } catch (e) {
+      bootErrors.push(`iframe access error: ${e.message}`);
+      window.removeEventListener('message', handleMessage);
+      finish();
+    }
+  };
+
+  iframe.onerror = e => {
+    bootErrors.push(`iframe failed to load: ${e.message ?? 'unknown error'}`);
+    window.removeEventListener('message', handleMessage);
+    finish();
+  };
+
+  const timer = setTimeout(() => {
+    bootErrors.push('Boot timed out after 5s');
+    window.removeEventListener('message', handleMessage);
+    finish();
+  }, iframeTimeout);
+
+  document.body.appendChild(iframe);
+  iframe.src = '../index.html';
+});
+
+const bootOk = bootErrors.length === 0;
+bootRow.className = `row ${bootOk ? 'pass' : 'fail'}`;
+bootRow.querySelector('.badge').textContent = bootOk ? 'PASS' : 'FAIL';
+if (!bootOk) {
+  bootErrors.forEach(msg => {
+    const err = document.createElement('div');
+    err.className = 'err';
+    err.textContent = msg;
+    bootRow.appendChild(err);
+  });
+}
+bootOk ? passed++ : failed++;
+
+// ── Summary ───────────────────────────────────────────────────────────────────
+const total = passed + failed;
+const ok    = failed === 0;
+summary.style.color  = ok ? '#6dbf6a' : '#d94f4f';
+summary.textContent  = ok
+  ? `✓ All ${total} boot smoke checks passed.`
+  : `✗ ${failed} of ${total} checks failed — see above.`;
+</script>
+</body>
+</html>

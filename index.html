@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Adaptive Session Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="app">
+
+<!-- ═══ SYSTEM BANNER (safety warnings, cooldown notices) ══════════════════ -->
+<div id="safetyBanner" class="sys-banner" style="display:none">
+  <span class="sys-banner-icon">⚠</span>
+  <span id="safetyBannerMsg" class="sys-banner-text"></span>
+  <button id="safetyDismiss" class="sys-banner-close">✕</button>
+</div>
+
+<!-- ═══ MENUBAR ════════════════════════════════════════════════════════════ -->
+<header class="menubar">
+
+  <div class="menubar-brand">
+    <div class="brand-mark">
+      <div class="brand-bars">
+        <span style="height:8px;opacity:.55"></span>
+        <span style="height:12px;opacity:.75"></span>
+        <span style="height:16px;opacity:1"></span>
+        <span style="height:10px;opacity:.65"></span>
+      </div>
+      <span class="brand-wordmark">ASS</span>
+      <span class="brand-sub">Studio</span>
+    </div>
+  </div>
+
+  <div class="menubar-file">
+    <button class="mb-btn" id="newSessionBtn" title="New session (Ctrl+N)">New</button>
+    <div class="mb-divider"></div>
+    <label class="mb-btn" title="Import .assp or .json session file" style="cursor:pointer">
+      Import<input id="importPackageInput" type="file" accept=".assp,.json" hidden />
+    </label>
+    <button class="mb-btn mb-btn--accent" id="exportPackageBtn" title="Export session as .assp (Ctrl+S)">Export .assp</button>
+    <button class="mb-btn" id="exportMdBtn"  title="Export session as readable Markdown script">Export .md</button>
+    <button class="mb-btn" id="exportZipBtn" title="Export session as .zip archive (with media files)">Export .zip</button>
+  </div>
+
+  <div class="menubar-center">
+    <div id="sessionTimer" class="session-timer" style="display:none" title="Session elapsed / total">—:—</div>
+    <input type="text" id="sessionNameInput" class="session-name-input"
+      placeholder="session name" autocomplete="off" spellcheck="false"
+      title="Session name — click to rename" maxlength="80" />
+    <div id="sessionNotesPreview" class="session-notes-preview" style="display:none"></div>
+    <div id="persistBadge" class="persist-badge" style="display:none">
+      <span class="persist-dot" id="persistDot"></span>
+      <span id="persistMsg">Saved</span>
+    </div>
+  </div>
+
+  <div class="menubar-end">
+    <button class="mb-icon-btn" id="undoBtn" disabled title="Undo (Ctrl+Z)" aria-label="Undo">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7a5 5 0 1 0 1.5-3.5"/><path d="M2 3v4h4"/></svg>
+    </button>
+    <button class="mb-icon-btn" id="redoBtn" disabled title="Redo (Ctrl+Y)" aria-label="Redo">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7a5 5 0 1 1-1.5-3.5"/><path d="M12 3v4H8"/></svg>
+    </button>
+    <div class="mb-divider"></div>
+    <button class="mb-icon-btn" id="fullscreenBtn" title="Toggle fullscreen (F)" aria-label="Fullscreen">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4.5V1.5h3M8 1.5h3v3M11.5 8.5v3h-3M4.5 11.5h-3v-3"/></svg>
+    </button>
+    <button class="mb-icon-btn" id="shortcutHelpBtn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts" style="font-size:13px;font-weight:600">?</button>
+    <button class="mb-icon-btn" id="settingsBtn" title="Settings" aria-label="Settings">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><circle cx="6.5" cy="6.5" r="1.8"/><path d="M6.5 1v1.3M6.5 10.7V12M1 6.5h1.3M10.7 6.5H12M2.9 2.9l.9.9M9.2 9.2l.9.9M2.9 10.1l.9-.9M9.2 3.8l.9-.9"/></svg>
+    </button>
+    <div class="mb-divider"></div>
+    <button class="mb-profile-btn" id="profileAvatarBtn" title="Your profile — XP, achievements, quests" aria-label="Profile">
+      <div class="mb-profile-ring" id="profileAvatarRing">
+        <div class="mb-profile-emoji" id="profileAvatarEmoji">🧘</div>
+      </div>
+      <div class="mb-profile-meta" id="profileAvatarMeta">
+        <span class="mb-profile-name" id="profileAvatarName">Profile</span>
+        <div class="mb-profile-xpbar">
+          <div class="mb-profile-xpfill" id="profileAvatarXpFill" style="width:0%"></div>
+        </div>
+      </div>
+    </button>
+  </div>
+
+</header>
+
+<!-- ═══ WORKSPACE ══════════════════════════════════════════════════════════ -->
+<div class="workspace">
+
+  <!-- ── TRACK PANEL ───────────────────────────────────────────────── -->
+  <aside class="track-panel" aria-label="Session tracks">
+    <div class="track-panel-head">
+      <span class="track-panel-title">Tracks</span>
+    </div>
+
+    <div class="track-panel-body" id="sidebarInner">
+
+      <!-- Blocks -->
+      <div class="tp-group">
+        <div class="tp-group-head">
+          <div class="tp-group-head-top"><div class="tp-group-label"><span class="tp-dot" style="background:var(--c-blue)"></span>Blocks</div></div>
+          <div class="tp-add-row">
+            <button class="tp-chip" data-add-block="text"  title="Text overlay">T</button>
+            <button class="tp-chip" data-add-block="tts"   title="Text-to-speech">◎</button>
+            <button class="tp-chip" data-add-block="audio" title="One-shot audio">♪</button>
+            <button class="tp-chip" data-add-block="video" title="Video / image">▶</button>
+            <button class="tp-chip" data-add-block="pause" title="Silence block">⏸</button>
+            <button class="tp-chip" data-add-block="viz"   title="Hypnotic visualization">🌀</button>
+            <button class="tp-chip" data-add-block="macro"      title="Macro trigger">⚙</button>
+            <button class="tp-chip" data-add-block="breathing"  title="Breathing exercise">💨</button>
+            <button class="tp-chip" data-add-block="entrainment" title="Binaural / isochronal audio">〰</button>
+          
+        <div style="padding:3px 8px 2px">
+          <input id="blockSearch" type="text" placeholder="Search blocks…"
+            style="width:100%;font-size:10px;padding:3px 7px;background:rgba(255,255,255,0.04);
+              border:0.5px solid rgba(255,255,255,0.1);border-radius:5px;color:var(--text2)" />
+        </div>
+        <div id="blockList" class="tp-list"></div>
+        <button class="tp-util-btn" id="sortBlocksBtn">↕ Sort by time</button>
+      </div>
+
+      <!-- Audio -->
+      <div class="tp-group">
+        <div class="tp-group-head">
+          <div class="tp-group-label"><span class="tp-dot" style="background:var(--c-amber)"></span>Audio</div>
+          <label class="tp-add-icon" title="Add audio track">
+            <svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M5 1v8M1 5h8"/></svg>
+            <input id="addAudioInput" type="file" accept="audio/*" multiple hidden />
+          </label>
+        </div>
+        <div id="audioList" class="tp-list"></div>
+      </div>
+
+      <!-- Video -->
+      <div class="tp-group">
+        <div class="tp-group-head">
+          <div class="tp-group-label"><span class="tp-dot" style="background:var(--c-purple)"></span>Video</div>
+          <label class="tp-add-icon" title="Add video or image">
+            <svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M5 1v8M1 5h8"/></svg>
+            <input id="addVideoInput" type="file" accept="video/*,image/*" multiple hidden />
+          </label>
+        </div>
+        <div id="videoList" class="tp-list"></div>
+      </div>
+
+      <!-- Subtitles -->
+      <div class="tp-group">
+        <div class="tp-group-head">
+          <div class="tp-group-label"><span class="tp-dot" style="background:var(--c-teal)"></span>Subtitles</div>
+          <label class="tp-add-icon" title="Import .ass/.ssa subtitle file">
+            <svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M5 1v8M1 5h8"/></svg>
+            <input id="addAssInput" type="file" accept=".ass,.ssa" hidden />
+          </label>
+        </div>
+        <div id="subtitleList" class="tp-list"></div>
+      </div>
+
+      <!-- FunScript -->
+      <div class="tp-group">
+        <div class="tp-group-head">
+          <div class="tp-group-label"><span class="tp-dot" style="background:var(--c-pink)"></span>FunScript</div>
+          <label class="tp-add-icon" title="Import .funscript file">
+            <svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M5 1v8M1 5h8"/></svg>
+            <input id="addFunscriptInput" type="file" accept=".funscript,application/json" multiple hidden />
+          </label>
+        </div>
+        <div id="funscriptList" class="tp-list"></div>
+      </div>
+
+      <!-- Scenes -->
+      <div class="tp-group">
+        <div class="tp-group-head">
+          <div class="tp-group-label"><span class="tp-dot" style="background:var(--c-green)"></span>Scenes</div>
+        </div>
+        <div id="scenesSummary" class="tp-list"></div>
+      </div>
+
+      <!-- Rules -->
+      <div class="tp-group">
+        <div class="tp-group-head">
+          <div class="tp-group-label"><span class="tp-dot" style="background:#c8a4ff"></span>Rules</div>
+        </div>
+        <div id="rulesSummary" class="tp-list"></div>
+      </div>
+
+      <!-- Triggers -->
+      <div class="tp-group">
+        <div class="tp-group-head">
+          <div class="tp-group-label"><span class="tp-dot" style="background:var(--c-amber)"></span>Triggers</div>
+        </div>
+        <div id="triggersSummary" class="tp-list"></div>
+      </div>
+
+      <!-- Variables -->
+      <div class="tp-group">
+        <div class="tp-group-head">
+          <div class="tp-group-label"><span class="tp-dot" style="background:var(--c-amber)"></span>Variables</div>
+        </div>
+        <div id="sidebarVariables" class="tp-list"></div>
+      </div>
+
+      <!-- Session Templates -->
+      <div class="tp-group">
+        <div class="tp-group-head">
+          <div class="tp-group-label"><span class="tp-dot" style="background:var(--c-purple,#c8a4ff)"></span>Templates</div>
+        </div>
+        <div id="sidebarTemplates" class="tp-list"></div>
+      </div>
+
+      <!-- Session Mode -->
+      <div class="tp-group">
+        <div class="tp-group-head">
+          <div class="tp-group-label"><span class="tp-dot" style="background:var(--accent)"></span>Session Mode</div>
+        </div>
+        <div id="sidebarModeSelector" class="tp-list"></div>
+      </div>
+
+    </div><!-- /track-panel-body -->
+  </aside>
+
+  <!-- ── CENTER: STAGE + TIMELINE ─────────────────────────────────── -->
+  <main class="center">
+
+    <!-- Stage -->
+    <div class="stage-wrap">
+      <div class="stage" id="mainStage" role="region" aria-label="Playback stage" aria-live="polite">
+        <div id="bgHost" class="stage-bg-host"></div>
+        <!-- Hypnotic visualization canvas — shown only during viz blocks -->
+        <canvas id="vizStageCanvas" style="position:absolute;inset:0;width:100%;height:100%;display:none;z-index:1;pointer-events:none"></canvas>
+
+        <div class="stage-idle" id="idleHint">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="12" stroke="currentColor" stroke-width="1" opacity=".25"/><path d="M11 8.5l7 4.5-7 4.5V8.5z" fill="currentColor" opacity=".3"/></svg>
+          <span>Space to play</span>
+        </div>
+
+        <div id="overlayText"  class="stage-overlay"></div>
+        <div id="subtitleText" class="stage-subtitle"></div>
+
+        <div id="fsPositionMeter" class="fs-pos-meter" style="display:none">
+          <div id="fsPositionBar" class="fs-pos-bar"></div>
+          <span id="fsPositionLabel" class="fs-pos-label"></span>
+        </div>
+
+        <div id="stageHud"     class="stage-hud">Idle</div>
+        <div id="varsHud" class="vars-hud" style="display:none"></div>
+        <div id="injectionHud" class="stage-injection" style="display:none"></div>
+        <div id="fsPauseHud"   class="stage-fs-pause" style="display:none">FS Paused</div>
+
+        <!-- Fullscreen overlay HUD — auto-hides after 2.5s cursor idle -->
+        <div id="fullscreenHud" class="fshud">
+          <div class="fshud-top">
+            <div id="fsHudTitle" class="fshud-title"></div>
+            <div id="fsHudTime"  class="fshud-time"></div>
+            <div id="fsHudScene" class="fshud-scene" style="display:none"></div>
+          </div>
+
+          <!-- Live metrics bars -->
+          <div id="fsHudMetrics" class="fshud-metrics">
+            <div class="fshud-metric">
+              <div class="fshud-metric-label">Attention</div>
+              <div class="fshud-metric-bar-track">
+                <div id="fsBar_attention" class="fshud-metric-bar fshud-bar-attn"></div>
+              </div>
+            </div>
+            <div class="fshud-metric">
+              <div class="fshud-metric-label">Engagement</div>
+              <div class="fshud-metric-bar-track">
+                <div id="fsBar_engagement" class="fshud-metric-bar fshud-bar-eng"></div>
+              </div>
+            </div>
+            <div class="fshud-metric">
+              <div class="fshud-metric-label">Intensity</div>
+              <div class="fshud-metric-bar-track">
+                <div id="fsBar_intensity" class="fshud-metric-bar fshud-bar-int"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="fshud-mid" id="fsHudMacroSection">
+            <div class="fshud-slots-label">Macro slots</div>
+            <div id="fsHudSlotPills" class="fshud-pills"></div>
+          </div>
+
+          <!-- Active variables display -->
+          <div id="fsHudVars" class="fshud-vars" style="display:none"></div>
+
+          <div class="fshud-bot" id="fsHudHint" style="display:none">
+            <p class="fshud-hint">Space · play/pause &nbsp;|&nbsp; Shift · FS pause &nbsp;|&nbsp; ← → · ±10s &nbsp;|&nbsp; [ ] · intensity &nbsp;|&nbsp; , . · speed &nbsp;|&nbsp; R · reset</p>
+            <p class="fshud-hint fshud-danger">ESC · emergency stop</p>
+          </div>
+        </div>
+
+        <!-- Live control feedback toast — shown briefly on [ ] , . R keypresses -->
+        <div id="liveControlToast" class="lc-toast" style="display:none"></div>
+
+        <!-- Persistent fullscreen progress — always visible, not affected by HUD auto-hide -->
+        <div class="fshud-progress-wrap" id="fsProgressWrap" style="display:none">
+          <div class="fshud-progress-fill" id="fsProgressFill"></div>
+        </div>
+        <div class="fshud-loop-badge" id="fsLoopBadge" style="display:none"></div>
+
+      </div><!-- /stage -->
+    </div><!-- /stage-wrap -->
+
+
+    <!-- ── Transport bar ────────────────────────────────────────────────── -->
+    <div class="transport-bar" id="transportBar">
+
+      <!-- Left group: play controls -->
+      <div class="transport-group">
+        <button class="t-btn t-btn--icon" id="skipBackBtn" title="Skip back 10s (←)">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 7h10M2 7l4-4M2 7l4 4"/><path d="M10 3v8" opacity=".4"/></svg>
+        </button>
+        <button class="t-btn t-btn--play" id="playBtn" title="Play / Pause (Space)" aria-label="Play">
+          <svg id="playIcon" width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M4 2.5l8 4.5-8 4.5z"/></svg>
+          <svg id="pauseIcon" width="14" height="14" viewBox="0 0 14 14" fill="currentColor" style="display:none"><rect x="3" y="2" width="3" height="10" rx="1"/><rect x="8" y="2" width="3" height="10" rx="1"/></svg>
+        </button>
+        <button class="t-btn" id="stopBtn" title="Stop (Esc)">■</button>
+        <button class="t-btn t-btn--icon" id="skipFwdBtn" title="Skip forward 10s (→)">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 7H2M12 7l-4-4M12 7l-4 4"/><path d="M4 3v8" opacity=".4"/></svg>
+        </button>
+        <button class="t-btn" id="nextSceneBtn" title="Next scene (N)" style="display:none">Scene ▶</button>
+      </div>
+
+      <!-- Center group: progress + time -->
+      <div class="transport-group transport-group--center">
+        <span class="t-time" id="tCurrent">00:00</span>
+        <div class="t-progress" id="progressBar" role="slider" aria-label="Playback position" tabindex="0">
+          <div class="t-progress-fill" id="progressFill"></div>
+          <div class="t-progress-thumb" id="progressThumb"></div>
+        </div>
+        <span class="t-time" id="tTotal">00:00</span>
+        <span class="t-loop-badge" id="loopDisplay" style="display:none"></span>
+      </div>
+
+      <!-- Right group: loop, volume -->
+      <div class="transport-group">
+        <button class="t-btn" id="loopToggle" title="Loop mode">↺ Off</button>
+        <div class="t-vol-wrap" title="Master volume">
+          <svg width="11" height="11" viewBox="0 0 11 11" fill="currentColor" opacity=".5"><path d="M1 4h2l3-3v9L3 7H1z"/><path d="M8 3.5a3 3 0 010 4M9.5 2a5 5 0 010 7" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round"/></svg>
+          <input type="range" id="masterVolumeSlider" min="0" max="1" step="0.02" value="0.8"
+            style="width:64px" aria-label="Master volume"/>
+        </div>
+      </div>
+
+    </div><!-- /transport-bar -->
+
+    <!-- ── Live control panel (rendered by live-control.js) ────────────── -->
+    <div id="liveControlPanel" style="display:none"></div>
+
+    <!-- ── Mini session scrubber ──────────────────────────────────────────── -->
+    <div class="mini-scrubber" id="miniScrubberWrap" title="Session progress — click to seek">
+      <div class="mini-scrubber-fill" id="miniScrubberFill" style="width:0%"></div>
+      <!-- Block markers rendered dynamically -->
+      <div id="miniScrubberMarkers" class="mini-scrubber-markers"></div>
+    </div>
+
+
+<!-- ═══ FUNSCRIPT EDITOR DIALOG ══════════════════════════════════════════════ -->
+<dialog id="fsDialog" aria-label="FunScript Editor" style="
+  padding:0;border:none;background:transparent;width:100vw;height:100vh;
+  max-width:100vw;max-height:100vh;margin:0">
+  <div style="display:flex;flex-direction:column;width:100vw;height:100vh;
+    background:#0b0b11;overflow:hidden">
+
+    <!-- Header bar -->
+    <div style="display:flex;align-items:center;gap:10px;padding:0 14px;
+      height:40px;background:#0f0f18;border-bottom:1px solid rgba(255,255,255,0.08);
+      flex-shrink:0">
+      <span style="font-size:12px;font-weight:600;color:#f0ece8;letter-spacing:.05em">⚡ FunScript Editor</span>
+      <span id="fsDlgTrackName" style="font-size:11px;color:rgba(255,255,255,0.4);font-style:italic"></span>
+      <div style="flex:1"></div>
+      <!-- Edit mode toggle -->
+      <button class="tl-btn" id="fsEditToggle" title="Toggle FunScript edit mode (E)">✎ Edit</button>
+      <div class="tl-btn-sep"></div>
+      <!-- Zoom controls -->
+      <span class="tl-zoom-label" id="zoomLabel" style="display:none"></span>
+      <button class="tl-btn" id="zoomResetBtn" style="display:none" title="Reset zoom (Ctrl+0)">⊞ Fit</button>
+      <div class="tl-btn-sep"></div>
+      <!-- Audio analysis quick-launch -->
+      <label class="tl-btn" title="Generate FunScript from audio file (Tier 3)" style="cursor:pointer">
+        🎵 From audio
+        <input id="fsDlgAudioFile" type="file" accept="audio/*" hidden />
+      </label>
+      <div class="tl-btn-sep"></div>
+      <!-- Close -->
+      <button id="fsDialogCloseBtn" style="
+        background:rgba(180,40,40,0.18);border:1px solid rgba(200,60,60,0.35);
+        border-radius:50%;width:30px;height:30px;color:rgba(220,100,100,0.85);
+        cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center"
+        title="Close editor" aria-label="Close FunScript editor">
+        <svg width="13" height="13" viewBox="0 0 13 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"><path d="M1 1l11 11M12 1L1 12"/></svg>
+      </button>
+    </div>
+
+    <!-- Timeline lanes -->
+    <div id="fsTimelinePanel" class="tl-lanes-panel" data-collapsed="false"
+      style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+
+      <!-- Navigator overview strip -->
+      <div class="tl-lane tl-lane--navigator">
+        <div class="tl-lane-hd"><span class="tl-lane-name">Nav</span></div>
+        <div class="tl-lane-body">
+          <canvas id="overviewCanvas" style="display:block;width:100%;height:32px" height="32"></canvas>
+        </div>
+      </div>
+
+      <!-- Scene ruler strip — named bands above FunScript canvas -->
+      <div id="fsDlgSceneRuler" style="flex-shrink:0;height:22px;background:rgba(255,255,255,0.03);
+        border-bottom:1px solid rgba(255,255,255,0.06);position:relative;overflow:hidden">
+        <!-- Scene bands rendered by drawSceneRuler() in funscript.js -->
+      </div>
+
+      <!-- FunScript position-vs-time editor -->
+      <div class="tl-lane tl-lane--funscript" style="flex:1">
+        <div class="tl-lane-hd">
+          <span class="tl-lane-name tl-lane-name--fs">⚡ FS</span>
+          <div class="tl-lane-actions">
+            <button class="tl-lane-btn" id="fs_selectAll"   title="Select all points">All</button>
+            <button class="tl-lane-btn" id="fs_clearSelect" title="Clear selection">✕</button>
+          </div>
+        </div>
+        <div class="tl-lane-body tl-lane-body--tall" style="flex:1">
+          <canvas id="fsCanvas" style="display:block;width:100%;height:100%" height="400"></canvas>
+        </div>
+      </div>
+
+      <!-- Transform bar -->
+      <div id="fsTransformBar" class="tl-transform" style="display:none">
+        <span class="tl-transform-title">⊞ Transform</span>
+        <label class="tl-transform-field">T×<input type="number" id="fs_timeScale" value="1" min="0.1" max="4" step="0.1"/></label>
+        <label class="tl-transform-field">P×<input type="number" id="fs_posScale"  value="1" min="0.1" max="2" step="0.05"/></label>
+        <label class="tl-transform-field">+ms<input type="number" id="fs_timeOffset" value="0" step="50"/></label>
+        <label class="tl-transform-field">+p<input type="number" id="fs_posOffset" value="0" min="-100" max="100" step="1"/></label>
+        <button id="fs_applyTransform" class="btn-accent tl-transform-apply">Apply</button>
+        <span id="fs_selectionCount" class="tl-transform-count"></span>
+      </div>
+
+      <!-- Point editor -->
+      <div id="fsPointEditor" class="tl-point-editor" style="display:none">
+        <span class="tl-transform-title">⏱ Point</span>
+        <label class="tl-transform-field">Time (ms)<input type="number" id="pt_time" min="0" step="10" style="width:72px"/></label>
+        <label class="tl-transform-field">Pos (0–100)<input type="number" id="pt_pos" min="0" max="100" step="1" style="width:58px"/></label>
+        <button id="pt_apply" class="btn-accent tl-transform-apply">Set</button>
+        <button id="pt_delete" class="tl-transform-apply" style="color:var(--danger);border-color:rgba(224,80,80,0.3)">Del</button>
+        <span id="pt_info" class="tl-transform-count"></span>
+      </div>
+
+    </div><!-- /fsTimelinePanel -->
+  </div>
+</dialog>
+
+  </main><!-- /center -->
+
+  <!-- ── INSPECTOR PANEL ───────────────────────────────────────────── -->
+  <aside class="inspector" aria-label="Inspector">
+    <div class="insp-tabs" role="tablist" aria-label="Inspector panels">
+      <button class="insp-tab active" data-tab="overlay" role="tab" aria-selected="true"  aria-controls="inspBody">Inspector</button>
+    </div>
+    <div class="insp-body" id="inspBody" role="tabpanel">
+      <div class="insp-empty">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".18"><rect x="2" y="2" width="8" height="8" rx="1.5"/><rect x="12" y="2" width="8" height="8" rx="1.5"/><rect x="2" y="12" width="8" height="8" rx="1.5"/><rect x="12" y="12" width="8" height="8" rx="1.5"/></svg>
+        <span>Select a block or track</span>
+      </div>
+    </div>
+  </aside>
+
+</div><!-- /workspace -->
+</div><!-- /app -->
+
+<!-- ═══ SETTINGS DIALOG ════════════════════════════════════════════════════ -->
+<dialog id="settingsDialog">
+  <div class="dlg-shell">
+    <div class="dlg-head">
+      <h3>Settings</h3>
+      <button id="closeSettings" class="dlg-close" aria-label="Close">
+        <svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M1 1l10 10M11 1L1 11"/></svg>
+      </button>
+    </div>
+
+    <div class="dlg-layout">
+      <nav class="dlg-sidenav">
+        <button class="settings-tab active" data-stab="appearance">Appearance</button>
+        <button class="settings-tab"        data-stab="playback">Playback</button>
+        <button class="settings-tab"        data-stab="display">Display / HUD</button>
+        <button class="settings-tab"        data-stab="funscript">FunScript</button>
+        <button class="settings-tab"        data-stab="macros">Macros</button>
+        <button class="settings-tab"        data-stab="subtitles">Subtitles</button>
+        <button class="settings-tab"        data-stab="webcam">Webcam</button>
+        <button class="settings-tab"        data-stab="safety">Safety</button>
+        <button class="settings-tab"        data-stab="advanced">Advanced</button>
+        <button class="settings-tab"        data-stab="system">System</button>
+        <hr style="border:none;border-top:0.5px solid rgba(255,255,255,0.07);margin:6px 4px"/>
+        <button class="settings-tab"        data-stab="profile">Profile</button>
+        <button class="settings-tab"        data-stab="ai">AI</button>
+        <button class="settings-tab"        data-stab="packs">Content Packs</button>
+      </nav>
+      <div class="dlg-body">
+
+      <!-- APPEARANCE -->
+      <div class="settings-section active" data-section="appearance">
+        <div class="settings-label">Preset themes</div>
+        <div class="theme-grid" id="themeGrid"></div>
+        <div class="settings-grid">
+          <label>Background<input type="color" id="s_backgroundColor"/></label>
+          <label>Text color<input type="color" id="s_textColor"/></label>
+          <label>Accent color<input type="color" id="s_accentColor"/></label>
+          <label>Stage blur (px)<input type="number" id="s_stageBlur" min="0" max="24" step="1"/></label>
+        </div>
+        <label>Overlay font family<input type="text" id="s_fontFamily" placeholder="Syne, system-ui, sans-serif"/></label>
+        <div class="theme-builder">
+          <h4>Save custom theme</h4>
+          <div class="settings-grid" style="margin-bottom:8px">
+            <label>Key<input type="text" id="s_customThemeKey" placeholder="oceanic"/></label>
+            <label>Name<input type="text" id="s_customThemeName" placeholder="Oceanic"/></label>
+          </div>
+          <div class="theme-color-row">
+            <label>BG<input type="color" id="s_customThemeBg"/></label>
+            <label>Accent<input type="color" id="s_customThemeAccent"/></label>
+            <label>Text<input type="color" id="s_customThemeText"/></label>
+            <button id="saveCustomThemeBtn"   class="btn-accent" style="margin-top:14px">Save</button>
+            <button id="deleteCustomThemeBtn" class="btn-danger"  style="margin-top:14px">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PLAYBACK -->
+      <div class="settings-section" data-section="playback">
+        <div class="settings-grid">
+          <label>Session name<input type="text" id="s_sessionName"/></label>
+          <label>Duration (sec)<input type="number" id="s_duration" min="10" step="1"/></label>
+          <label>Loop mode
+            <select id="s_loopMode">
+              <option value="none">None — play once</option>
+              <option value="count">Loop count</option>
+              <option value="minutes">Runtime minutes</option>
+              <option value="forever">Loop forever</option>
+            </select>
+          </label>
+          <label>Loop count<input type="number" id="s_loopCount" min="1" step="1"/></label>
+          <label>Runtime minutes<input type="number" id="s_runtimeMinutes" min="1" step="1"/></label>
+          <label>TTS speech rate
+            <div class="flex-row"><input type="range" id="s_speechRate" min="0.5" max="2" step="0.05"/><span id="s_speechRateVal">1.0</span></div>
+          </label>
+          <label>Master volume
+            <div class="flex-row"><input type="range" id="s_masterVolume" min="0" max="1" step="0.01"/><span id="s_masterVolumeVal">80%</span></div>
+          </label>
+          <label>Playlist audio vol
+            <div class="flex-row"><input type="range" id="s_playlistAudioVolume" min="0" max="1" step="0.05"/><span id="s_pavVal">0.7</span></div>
+          </label>
+          <label>Playlist video vol
+            <div class="flex-row"><input type="range" id="s_playlistVideoVolume" min="0" max="1" step="0.05"/><span id="s_pvvVal">0.6</span></div>
+          </label>
+          <label>Crossfade (sec)<input type="number" id="s_crossfadeSeconds" min="0" max="10" step="0.1"/></label>
+        </div>
+      </div>
+
+      <!-- FUNSCRIPT -->
+      <div class="settings-section" data-section="funscript">
+        <div class="info-box info-box--amber">
+          <strong>FunScript</strong> (.funscript) defines timed haptic position scripts.
+          Import tracks, adjust speed and range, then connect a device via <strong>Intiface Central</strong>.
+        </div>
+        <div class="settings-grid">
+          <label>Playback speed
+            <div class="flex-row"><input type="range" id="s_fsSpeed" min="0.25" max="4" step="0.25"/><span id="s_fsSpeedVal">1.0×</span></div>
+          </label>
+          <label>Output range (0–100)<input type="number" id="s_fsRange" min="1" max="100" step="1"/></label>
+          <label style="flex-direction:row;align-items:center;gap:8px;grid-column:1/-1">
+            <input type="checkbox" id="s_fsInvert"/> Invert output (100 − pos)
+          </label>
+        </div>
+        <div class="settings-label" style="margin:12px 0 6px">Device connection (Intiface Central)</div>
+        <div class="flex-row" style="margin-bottom:8px">
+          <input type="text" id="s_deviceWsUrl" value="ws://localhost:12345" style="flex:1" placeholder="ws://localhost:12345"/>
+          <button id="s_connectDevice"    class="btn-accent">Connect</button>
+          <button id="s_disconnectDevice">Disconnect</button>
+        </div>
+        <div class="device-status-display" id="deviceStatusDisplay">Disconnected</div>
+        <div style="margin-top:14px">
+          <div class="settings-label" style="margin-bottom:7px">Keyboard shortcuts</div>
+          <div class="kbd-grid">
+            <span><kbd>Space</kbd> play / pause</span>
+            <span><kbd>Enter</kbd> stop</span>
+            <span><kbd>F</kbd> fullscreen</span>
+            <span><kbd>N</kbd> next scene</span>
+            <span><kbd>← →</kbd> skip ±10s</span>
+            <span><kbd>↑ ↓</kbd> skip ±30s</span>
+            <span><kbd>[</kbd> intensity −10%</span>
+            <span><kbd>]</kbd> intensity +10%</span>
+            <span><kbd>,</kbd> speed −0.1×</span>
+            <span><kbd>.</kbd> speed +0.1×</span>
+            <span><kbd>R</kbd> reset live controls</span>
+            <span><kbd>1–5</kbd> inject macro slot</span>
+            <span><kbd>Shift</kbd> FS pause toggle</span>
+            <span><kbd>E</kbd> edit mode</span>
+            <span><kbd>Ctrl+Z/Y</kbd> undo / redo</span>
+            <span><kbd>Ctrl+S</kbd> export package</span>
+            <span><kbd>Ctrl+,</kbd> open settings</span>
+            <span><kbd>Ctrl+0</kbd> reset zoom</span>
+            <span><kbd>Scroll</kbd> zoom timeline</span>
+            <span><kbd>ESC</kbd> emergency stop</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- DISPLAY / HUD -->
+      <div class="settings-section" data-section="display">
+        <div class="info-box info-box--blue" style="margin-bottom:14px">
+          Control what appears in the <strong>fullscreen HUD overlay</strong> and how the stage looks during and between sessions. Critical warnings and emergency banners are always shown.
+        </div>
+
+        <div class="settings-label" style="margin-bottom:8px">Fullscreen HUD elements</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+          <label style="flex-direction:row;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" id="s_hudMetricBars" checked/>
+            <div>
+              <div style="font-size:12px;color:var(--text)">Metric bars</div>
+              <div style="font-size:10.5px;color:var(--text3)">Attention · Engagement · Intensity — animated bars in real time</div>
+            </div>
+          </label>
+          <label style="flex-direction:row;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" id="s_hudScene" checked/>
+            <div>
+              <div style="font-size:12px;color:var(--text)">Scene indicator</div>
+              <div style="font-size:10.5px;color:var(--text3)">Shows active scene name + state block (e.g. "Drop ⚡ Peak")</div>
+            </div>
+          </label>
+          <label style="flex-direction:row;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" id="s_hudMacroSlots" checked/>
+            <div>
+              <div style="font-size:12px;color:var(--text)">Macro slot pills</div>
+              <div style="font-size:10.5px;color:var(--text3)">Shows named macro slots 1–5; highlights when actively injecting</div>
+            </div>
+          </label>
+          <label style="flex-direction:row;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" id="s_hudVariables" checked/>
+            <div>
+              <div style="font-size:12px;color:var(--text)">Variable chips</div>
+              <div style="font-size:10.5px;color:var(--text3)">Shows non-zero session variables as compact chips (e.g. score 10)</div>
+            </div>
+          </label>
+          <label style="flex-direction:row;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" id="s_hudHint"/>
+            <div>
+              <div style="font-size:12px;color:var(--text)">Keyboard hint row</div>
+              <div style="font-size:10.5px;color:var(--text3)">Shows shortcut reference at the bottom of the HUD (default: off)</div>
+            </div>
+          </label>
+        </div>
+
+        <div class="settings-label" style="margin-bottom:8px">Metric bar position &amp; visibility</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+          <label>OSD position
+            <select id="s_hudMetricsPos" style="margin-top:4px">
+              <option value="top">Top</option>
+              <option value="middle">Middle</option>
+              <option value="bottom" selected>Bottom (default)</option>
+              <option value="off">Off</option>
+            </select>
+          </label>
+          <div style="display:flex;gap:16px;flex-wrap:wrap">
+            <label style="flex-direction:row;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="s_showAttention" checked/>
+              <span style="font-size:12px;color:var(--text)">Attention bar</span>
+            </label>
+            <label style="flex-direction:row;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="s_showEngagement" checked/>
+              <span style="font-size:12px;color:var(--text)">Engagement bar</span>
+            </label>
+            <label style="flex-direction:row;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="s_showIntensity" checked/>
+              <span style="font-size:12px;color:var(--text)">Intensity bar</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="settings-label" style="margin-bottom:8px">HUD timing</div>
+        <div class="settings-grid" style="margin-bottom:16px">
+          <label>Auto-hide after (sec)
+            <div class="flex-row">
+              <input type="range" id="s_hudHideAfter" min="1" max="10" step="0.5"/>
+              <span id="s_hudHideAfterVal">2.5s</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="settings-label" style="margin-bottom:8px">Stage display</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+          <label style="flex-direction:row;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" id="s_displayRichIdle" checked/>
+            <div>
+              <div style="font-size:12px;color:var(--text)">Rich idle screen</div>
+              <div style="font-size:10.5px;color:var(--text3)">Shows session title, block/scene/mode info while stopped. Uncheck for minimal "Space to play" hint.</div>
+            </div>
+          </label>
+          <label style="flex-direction:row;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" id="s_displayFsHeatmap" checked/>
+            <div>
+              <div style="font-size:12px;color:var(--text)">FunScript heatmap</div>
+              <div style="font-size:10.5px;color:var(--text3)">Speed-color strip under each track in the sidebar and inspector</div>
+            </div>
+          </label>
+        </div>
+
+        <div class="settings-label" style="margin-bottom:8px">Sensor bridge</div>
+        <div class="settings-grid" style="margin-bottom:8px">
+          <label style="grid-column:1/-1">WebSocket URL
+            <input type="text" id="s_sensorBridgeUrl" value="ws://localhost:8765" placeholder="ws://localhost:8765" style="font-size:11px"/>
+          </label>
+          <label style="flex-direction:row;align-items:center;gap:8px;grid-column:1/-1">
+            <input type="checkbox" id="s_sensorBridgeAuto"/>
+            Auto-connect sensor bridge when session starts
+          </label>
+        </div>
+        <div style="font-size:10.5px;color:var(--text3);line-height:1.6">
+          The sensor bridge receives biometric data (heart rate, GSR, EEG) via WebSocket and feeds it into the engagement engine. Connect in Settings → Advanced when a biometric device is running.
+        </div>
+
+        <div class="settings-label" style="margin:16px 0 8px">Progress notifications</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+          <label style="flex-direction:row;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" id="s_toastXp" checked/>
+            <div>
+              <div style="font-size:12px;color:var(--text)">XP earned toast</div>
+              <div style="font-size:10.5px;color:var(--text3)">Show "+N XP" after each session</div>
+            </div>
+          </label>
+          <label style="flex-direction:row;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" id="s_toastLevelUp" checked/>
+            <div>
+              <div style="font-size:12px;color:var(--text)">Level-up announcement</div>
+              <div style="font-size:10.5px;color:var(--text3)">Banner when you reach a new level</div>
+            </div>
+          </label>
+          <label style="flex-direction:row;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" id="s_toastAchievements" checked/>
+            <div>
+              <div style="font-size:12px;color:var(--text)">Achievement unlocked</div>
+              <div style="font-size:10.5px;color:var(--text3)">Toast when a badge is earned for the first time</div>
+            </div>
+          </label>
+          <label style="flex-direction:row;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" id="s_toastQuests" checked/>
+            <div>
+              <div style="font-size:12px;color:var(--text)">Quest completed</div>
+              <div style="font-size:10.5px;color:var(--text3)">Toast when a daily quest is ticked off</div>
+            </div>
+          </label>
+        </div>
+
+        <div class="settings-label" style="margin:16px 0 8px">Session mode</div>
+        <div id="s_currentModeDisplay" style="font-size:11px;color:var(--text2);margin-bottom:8px;min-height:18px">None applied</div>
+        <button id="s_openModeSelector" style="font-size:11px;padding:5px 14px">⚙ Change session mode…</button>
+      </div>
+
+      <!-- MACROS -->
+      <div class="settings-section" data-section="macros">
+        <div class="settings-label" style="margin-bottom:8px">Key slots (press 1–5 during playback to inject)</div>
+        <div id="macroSlots" style="margin-bottom:16px"></div>
+        <div class="flex-row" style="margin-bottom:10px;flex-wrap:wrap;gap:6px">
+          <span class="settings-label" style="margin:0;flex:1">Sort:</span>
+          <button id="mlSortName"     style="font-size:11px;padding:3px 8px">Name</button>
+          <button id="mlSortDuration" style="font-size:11px;padding:3px 8px">Duration</button>
+          <button id="mlSortType"     style="font-size:11px;padding:3px 8px">Type</button>
+          <button id="mlNewBtn" class="btn-accent" style="font-size:11px">+ New</button>
+          <label class="btn-accent" style="font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:4px">
+            Import .funscript<input id="mlImportInput" type="file" accept=".funscript,application/json" multiple hidden/>
+          </label>
+        </div>
+        <div id="macroLibraryBody" style="max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r);margin-bottom:12px"></div>
+        <div class="settings-label" style="margin-bottom:6px">Macro editor</div>
+        <div id="macroEditor" style="background:var(--surface2);border-radius:var(--r);padding:10px"></div>
+      </div>
+
+      <!-- SUBTITLES -->
+      <div class="settings-section" data-section="subtitles">
+        <div class="info-box info-box--blue">
+          Import <strong>.ass / .ssa</strong> subtitle files. Style overrides apply at playback — original files are preserved in the package.
+        </div>
+        <div class="settings-grid">
+          <label>Default text color<input type="color" id="s_assTextColor"/></label>
+          <label>Font size (rem)<input type="number" id="s_assFontSize" min="0.6" max="4" step="0.1"/></label>
+          <label>Position
+            <select id="s_assPosition">
+              <option value="bottom">Bottom (default)</option>
+              <option value="top">Top</option>
+              <option value="center">Center</option>
+            </select>
+          </label>
+          <label>Style override
+            <select id="s_assOverride">
+              <option value="none">None — use .ass styles</option>
+              <option value="color">Color only</option>
+              <option value="all">Override all</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <!-- WEBCAM -->
+      <div class="settings-section" data-section="webcam">
+        <div class="settings-grid" style="margin-bottom:12px">
+          <label style="flex-direction:row;align-items:center;gap:8px;grid-column:1/-1"><input type="checkbox" id="s_trackingEnabled"/> Enable attention tracking</label>
+          <label style="flex-direction:row;align-items:center;gap:8px;grid-column:1/-1"><input type="checkbox" id="s_autoPauseOnAttentionLoss" class="requires-face-detector"/> Auto-pause on attention loss</label>
+          <label style="flex-direction:row;align-items:center;gap:8px;grid-column:1/-1"><input type="checkbox" id="s_autoResumeOnAttentionReturn" class="requires-face-detector"/> Auto-resume when attention returns</label>
+          <label class="requires-face-detector">Loss threshold (sec)<input type="number" id="s_attentionThreshold" min="1" step="1"/></label>
+        </div>
+        <div class="settings-label" style="margin-bottom:8px">FunScript integration</div>
+        <div class="webcam-fs-opts">
+          <label style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="s_pauseFsOnLoss" class="requires-face-detector"/> Pause FunScript on attention loss</label>
+          <label style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="s_injectMacroOnLoss" class="requires-face-detector"/> Inject macro on attention loss</label>
+          <label class="requires-face-detector">Macro slot on loss
+            <select id="s_lossInjectSlot"><option value="0">— none —</option><option value="1">Slot 1</option><option value="2">Slot 2</option><option value="3">Slot 3</option><option value="4">Slot 4</option><option value="5">Slot 5</option></select>
+          </label>
+          <label style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="s_injectMacroOnReturn"/> Inject macro when attention returns</label>
+          <label>Macro slot on return
+            <select id="s_returnInjectSlot"><option value="0">— none —</option><option value="1">Slot 1</option><option value="2">Slot 2</option><option value="3">Slot 3</option><option value="4">Slot 4</option><option value="5">Slot 5</option></select>
+          </label>
+        </div>
+        <div class="flex-row" style="gap:8px;margin:12px 0 10px">
+          <button id="startTrackingBtn" class="btn-accent">Start webcam</button>
+          <button id="stopTrackingBtn">Stop</button>
+          <div id="trackingWarmup" style="display:none;align-items:center;gap:5px;font-size:11px;color:var(--c-amber)">
+            <span style="animation:spin 1s linear infinite;display:inline-block">◌</span> Warming up…
+          </div>
+        </div>
+        <div style="position:relative;margin-bottom:10px">
+          <video id="trackingPreview" autoplay muted playsinline style="width:100%;border-radius:var(--r);border:1px solid var(--border);background:#000;max-height:160px;object-fit:cover"></video>
+          <canvas id="trackingOverlay" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none"></canvas>
+        </div>
+        <div class="settings-grid" style="grid-template-columns:1fr 1fr 1fr">
+          <div><div class="settings-label">Camera</div><div id="cameraStatus" class="status-val">Off</div></div>
+          <div><div class="settings-label">Face</div><div id="faceStatus" class="status-val">Unknown</div></div>
+          <div><div class="settings-label">Loss</div><div id="attentionLossDisplay" class="status-val">0.0s</div></div>
+        </div>
+
+        <div class="settings-label" style="margin:14px 0 8px">Fullscreen live preview</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label style="flex-direction:row;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="s_webcamPreview"/>
+            <div>
+              <div style="font-size:12px;color:var(--text)">Show webcam during fullscreen</div>
+              <div style="font-size:10.5px;color:var(--text3)">Displays a live camera thumbnail on the stage</div>
+            </div>
+          </label>
+          <div class="settings-grid" style="grid-template-columns:1fr 1fr">
+            <label>Corner position
+              <select id="s_webcamCorner">
+                <option value="top-left">Top-left</option>
+                <option value="top-right">Top-right</option>
+                <option value="bottom-left">Bottom-left</option>
+                <option value="bottom-right" selected>Bottom-right</option>
+              </select>
+            </label>
+            <label>Size (% of stage width)
+              <input type="number" id="s_webcamSize" min="5" max="40" step="5" value="15"/>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- SAFETY -->
+      <div class="settings-section" data-section="safety">
+        <div class="info-box info-box--amber" style="margin-bottom:14px">
+          These limits are enforced during playback regardless of what rules, ramps, or AI generation request.
+          Changes take effect on the next playback start.
+        </div>
+        <div class="settings-grid">
+          <label>Max intensity (0–2)
+            <div class="flex-row"><input type="range" id="s_safetyMaxInt" min="0" max="2" step="0.05" /><span id="s_safetyMaxIntVal">200%</span></div>
+          </label>
+          <label>Max speed (0.25–4×)
+            <div class="flex-row"><input type="range" id="s_safetyMaxSpd" min="0.25" max="4" step="0.25" /><span id="s_safetyMaxSpdVal">4.0×</span></div>
+          </label>
+          <label>Warn above intensity
+            <div class="flex-row"><input type="range" id="s_safetyWarn" min="0" max="2" step="0.05" /><span id="s_safetyWarnVal">150%</span></div>
+          </label>
+          <label>Emergency cooldown (sec)<input type="number" id="s_safetyCool" min="0" max="300" step="5" /></label>
+        </div>
+        <label style="flex-direction:row;align-items:center;gap:8px;margin-bottom:8px">
+          <input type="checkbox" id="s_safetyAutoReduce" /> Auto-reduce intensity when attention is lost
+        </label>
+        <label id="s_safetyReduceTargetRow" style="display:none">Auto-reduce to (0–2)
+          <div class="flex-row"><input type="range" id="s_safetyReduceTarget" min="0" max="2" step="0.05" /><span id="s_safetyReduceTargetVal">80%</span></div>
+        </label>
+        <div style="margin-top:12px;font-size:11px;color:var(--text3);line-height:1.6">
+          These settings are persisted in your session file and will be exported with it.
+          You can also adjust them live in the Safety panel below the timeline during playback.
+        </div>
+      </div>
+
+      <!-- ADVANCED -->
+      <div class="settings-section" data-section="advanced">
+        <div class="settings-label" style="margin-bottom:8px">Raw session JSON</div>
+        <textarea id="s_jsonPreview" style="min-height:260px;font-size:11px;font-family:var(--mono);resize:vertical;width:100%"></textarea>
+        <div class="flex-row" style="margin-top:8px;gap:6px">
+          <button id="applyJsonBtn"  class="btn-accent">Apply JSON</button>
+          <button id="formatJsonBtn">Format</button>
+        </div>
+        <div id="sensorBridgePanel" style="margin-top:16px;padding-top:14px;border-top:0.5px solid rgba(255,255,255,0.06)"></div>
+      </div>
+
+      <!-- SYSTEM -->
+      <div class="settings-section" data-section="system">
+        <div class="settings-label" style="margin-bottom:14px">System</div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+
+          <div style="background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.07);
+            border-radius:8px;padding:12px 14px">
+            <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px">Onboarding Tutorial</div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+              Re-run the first-run walkthrough that explains blocks, scenes, rules, live controls, and auto-save.
+            </div>
+            <button id="restartOnboardingBtn" style="font-size:11px;padding:5px 14px">
+              ▶ Restart Tutorial
+            </button>
+          </div>
+
+          <div style="background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.07);
+            border-radius:8px;padding:12px 14px">
+            <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px">User Profile</div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+              Erase your profile, session history, and all analytics. This cannot be undone.
+            </div>
+            <button id="clearProfileSettingsBtn" style="font-size:11px;padding:5px 14px;
+              color:var(--danger);border-color:rgba(224,80,80,0.3)">
+              🗑 Clear Profile &amp; History
+            </button>
+          </div>
+
+          <div style="background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.07);
+            border-radius:8px;padding:12px 14px">
+            <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px">Reset All Settings</div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+              Restore all appearance, playback, FunScript, safety, and advanced settings to their
+              factory defaults. Your session content and profile are not affected.
+            </div>
+            <button id="resetAllSettingsBtn" style="font-size:11px;padding:5px 14px;
+              color:var(--danger);border-color:rgba(224,80,80,0.3)">
+              ↺ Reset All Settings to Defaults
+            </button>
+          </div>
+
+          <!-- Quarantine recovery — only shown when a quarantined session exists -->
+          <div id="quarantineRecoveryCard" style="display:none;background:rgba(240,160,74,0.07);
+            border:0.5px solid rgba(240,160,74,0.3);border-radius:8px;padding:12px 14px">
+            <div style="font-size:12px;font-weight:600;color:var(--warn, #f0a04a);margin-bottom:4px">
+              ⚠ Quarantined Session
+            </div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+              A previous session failed to load and was quarantined. You can load it into
+              the JSON editor to inspect or recover it, or discard it permanently.
+            </div>
+            <div style="display:flex;gap:6px">
+              <button id="loadQuarantinedBtn" style="font-size:11px;padding:5px 10px">
+                📋 Load into JSON Editor
+              </button>
+              <button id="discardQuarantinedBtn" style="font-size:11px;padding:5px 10px;
+                color:var(--danger);border-color:rgba(224,80,80,0.3)">
+                🗑 Discard
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <!-- PROFILE -->
+      <div class="settings-section" data-section="profile">
+        <div class="settings-label" style="margin-bottom:14px">Profile &amp; Identity</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+          <!-- Column 1: Identity -->
+          <div>
+            <div class="settings-label" style="margin-bottom:8px">Identity</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <label>Display name
+                <input type="text" id="sp_displayName" maxlength="40" placeholder="Your name (optional)" autocomplete="off"/>
+              </label>
+              <label>Avatar emoji
+                <input type="text" id="sp_avatarEmoji" maxlength="2" placeholder="🧘" style="width:60px"/>
+              </label>
+              <label>Goals / intentions
+                <textarea id="sp_goals" rows="3" maxlength="500" placeholder="What are you working toward?" style="resize:vertical"></textarea>
+              </label>
+              <label>Session role
+                <select id="sp_primaryUse">
+                  <option value="self">Myself, for myself</option>
+                  <option value="self-for-partner">Myself, for my partner</option>
+                  <option value="partner-trains-me">Guided by my partner</option>
+                  <option value="i-train-partner">Guiding my partner</option>
+                  <option value="other">Private / demo mode</option>
+                </select>
+              </label>
+              <label>Subject role
+                <select id="sp_role">
+                  <option value="primary">I'm the subject</option>
+                  <option value="operator">I'm the operator</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <!-- Column 2: Demographics + Units -->
+          <div>
+            <div class="settings-label" style="margin-bottom:8px">Demographics</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+                <label>Day of birth
+                  <select id="sp_dobDay">
+                    <option value="">—</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="7">7</option>
+                    <option value="8">8</option>
+                    <option value="9">9</option>
+                    <option value="10">10</option>
+                    <option value="11">11</option>
+                    <option value="12">12</option>
+                    <option value="13">13</option>
+                    <option value="14">14</option>
+                    <option value="15">15</option>
+                    <option value="16">16</option>
+                    <option value="17">17</option>
+                    <option value="18">18</option>
+                    <option value="19">19</option>
+                    <option value="20">20</option>
+                    <option value="21">21</option>
+                    <option value="22">22</option>
+                    <option value="23">23</option>
+                    <option value="24">24</option>
+                    <option value="25">25</option>
+                    <option value="26">26</option>
+                    <option value="27">27</option>
+                    <option value="28">28</option>
+                    <option value="29">29</option>
+                    <option value="30">30</option>
+                    <option value="31">31</option>
+                  </select>
+                </label>
+                <label>Month
+                  <select id="sp_dobMonth">
+                    <option value="">—</option>
+                    <option value="1">Jan</option>
+                    <option value="2">Feb</option>
+                    <option value="3">Mar</option>
+                    <option value="4">Apr</option>
+                    <option value="5">May</option>
+                    <option value="6">Jun</option>
+                    <option value="7">Jul</option>
+                    <option value="8">Aug</option>
+                    <option value="9">Sep</option>
+                    <option value="10">Oct</option>
+                    <option value="11">Nov</option>
+                    <option value="12">Dec</option>
+                  </select>
+                </label>
+                <div id="sp_zodiacDisplay" style="display:flex;align-items:flex-end;padding-bottom:6px;font-size:11px;color:rgba(196,154,60,0.7)">Zodiac</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                <label>Age range
+                  <select id="sp_ageRange">
+                    <option value="">—</option>
+                    <option value="18-24">18–24</option>
+                    <option value="25-30">25–30</option>
+                    <option value="31-40">31–40</option>
+                    <option value="41-50">41–50</option>
+                    <option value="50+">50+</option>
+                  </select>
+                </label>
+                <label>Gender
+                  <select id="sp_gender">
+                    <option value="">—</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="nonbinary">Non-binary</option>
+                    <option value="prefer_not">Prefer not to say</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div class="settings-label" style="margin:14px 0 8px">Body Metrics <span style="font-size:9px;font-weight:400;color:var(--text3)">⚕ not medical advice</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+              <label id="sp_heightLabel">Height (cm)
+                <input type="number" id="sp_heightCm" min="100" max="250" step="1" placeholder="175"/>
+              </label>
+              <label id="sp_weightLabel">Weight (kg)
+                <input type="number" id="sp_weightKg" min="30" max="300" step="0.5" placeholder="72"/>
+              </label>
+              <label>Body fat %
+                <input type="number" id="sp_bodyFatPct" min="3" max="60" step="0.5" placeholder="18"/>
+              </label>
+              <label>Activity level
+                <select id="sp_fitnessLevel">
+                  <option value="">—</option>
+                  <option value="sedentary">Sedentary</option>
+                  <option value="light">Lightly active</option>
+                  <option value="moderate">Moderately active</option>
+                  <option value="active">Very active</option>
+                  <option value="athlete">Athlete</option>
+                </select>
+              </label>
+            </div>
+            <div id="sp_bmiDisplay" style="font-size:11px;margin-top:6px;color:rgba(255,255,255,0.4)"></div>
+
+            <div class="settings-label" style="margin:14px 0 8px">Preferences</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+              <label>Units
+                <select id="sp_unitSystem">
+                  <option value="metric">Metric (cm, kg)</option>
+                  <option value="imperial">Imperial (ft/in, lbs)</option>
+                </select>
+              </label>
+              <label>Focus avg window
+                <select id="sp_focusWindow">
+                  <option value="5">Last 5 sessions</option>
+                  <option value="14">Last 14 sessions</option>
+                  <option value="30">Last 30 sessions</option>
+                  <option value="90">Last 90 sessions</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+        </div><!-- /grid -->
+      </div>
+
+      <!-- AI -->
+      <div class="settings-section" data-section="ai">
+        <div class="settings-label" style="margin-bottom:14px">AI Session Generator</div>
+        <div style="max-width:480px">
+          <div style="background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.07);border-radius:8px;padding:12px 14px;margin-bottom:12px">
+            <div class="settings-label" style="margin-bottom:8px">Anthropic API Key</div>
+            <div id="sp_apiKeyDisplay"></div>
+            <div style="font-size:10.5px;color:var(--text3);margin-top:6px;line-height:1.5">
+              Key stored in IndexedDB on this device — never sent anywhere except Anthropic's API.
+              <strong style="color:rgba(240,160,74,0.7)">⚠ Keep this app on a trusted local server.</strong>
+            </div>
+          </div>
+          <div style="background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.07);border-radius:8px;padding:12px 14px">
+            <div class="settings-label" style="margin-bottom:6px">About AI Generation</div>
+            <p style="font-size:11px;color:var(--text3);line-height:1.6;margin:0">
+              Describe a session and Claude will generate blocks, scenes, rules, and variables.
+              Use the AI Generator panel in the Inspector to compose prompts.
+              Your API key is required — get one at <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a>.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Content Packs section -->
+      <div class="settings-section" data-section="packs">
+        <div class="settings-section-title">Content Packs</div>
+        <div id="contentPacksPickerSettings" style="margin-bottom:20px"></div>
+        <div style="border-top:0.5px solid rgba(255,255,255,0.07);padding-top:16px">
+          <div id="contentPackEditorSettings"></div>
+        </div>
+      </div>
+      </div><!-- /dlg-body -->
+    </div><!-- /dlg-layout -->
+
+    <div class="dlg-foot">
+      <button id="settingsDoneBtn" class="btn-accent">Done</button>
+    </div>
+  </div><!-- /dlg-shell -->
+</dialog>
+
+<!-- Keyboard shortcut overlay -->
+<div id="shortcutOverlay" style="display:none;position:fixed;inset:0;z-index:9000;
+  background:rgba(4,4,7,0.85);backdrop-filter:blur(8px);align-items:center;justify-content:center">
+  <div style="background:#0f0f18;border:0.5px solid rgba(255,255,255,0.12);border-radius:16px;
+    padding:28px 32px;max-width:600px;width:94vw;max-height:85vh;overflow-y:auto;position:relative">
+    <button id="shortcutOverlayClose" style="position:absolute;top:14px;right:14px;
+      background:rgba(180,40,40,0.18);border:1px solid rgba(200,60,60,0.35);border-radius:50%;
+      width:28px;height:28px;color:rgba(220,100,100,0.85);cursor:pointer;font-size:14px">✕</button>
+    <div style="font-size:16px;font-weight:700;color:#f0ece8;margin-bottom:18px">Keyboard Shortcuts</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 32px">
+      <div>
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.3);margin-bottom:8px">Playback</div>
+        <div class="kbd-row"><kbd>Space</kbd><span>Play / Pause</span></div>
+        <div class="kbd-row"><kbd>Esc</kbd><span>Emergency stop</span></div>
+        <div class="kbd-row"><kbd>F</kbd><span>Fullscreen</span></div>
+        <div class="kbd-row"><kbd>N</kbd><span>Skip to next scene</span></div>
+        <div class="kbd-row"><kbd>[ ]</kbd><span>Decrease / Increase intensity</span></div>
+        <div class="kbd-row"><kbd>, .</kbd><span>Decrease / Increase speed</span></div>
+        <div class="kbd-row"><kbd>Shift</kbd><span>Pause haptic device</span></div>
+        <div class="kbd-row"><kbd>1–5</kbd><span>Inject macro slot 1–5</span></div>
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.3);margin:14px 0 8px">Timeline</div>
+        <div class="kbd-row"><kbd>E</kbd><span>Toggle edit mode</span></div>
+        <div class="kbd-row"><kbd>Ctrl 0</kbd><span>Reset zoom (Fit)</span></div>
+        <div class="kbd-row"><kbd>Del</kbd><span>Delete selected point</span></div>
+      </div>
+      <div>
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.3);margin-bottom:8px">Session</div>
+        <div class="kbd-row"><kbd>Ctrl N</kbd><span>New session</span></div>
+        <div class="kbd-row"><kbd>Ctrl S</kbd><span>Export .assp</span></div>
+        <div class="kbd-row"><kbd>Ctrl ⇧ S</kbd><span>Export .zip archive</span></div>
+        <div class="kbd-row"><kbd>Ctrl Z</kbd><span>Undo</span></div>
+        <div class="kbd-row"><kbd>Ctrl Y</kbd><span>Redo</span></div>
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.3);margin:14px 0 8px">Fullscreen HUD</div>
+        <div class="kbd-row"><kbd>[ ]</kbd><span>Intensity −/+</span></div>
+        <div class="kbd-row"><kbd>, .</kbd><span>Speed −/+</span></div>
+        <div class="kbd-row"><kbd>1–5</kbd><span>Macro inject</span></div>
+        <div class="kbd-row"><kbd>N</kbd><span>Next scene</span></div>
+        <div class="kbd-row"><kbd>Esc</kbd><span>Emergency stop + exit</span></div>
+        <div style="font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.3);margin:14px 0 8px">App</div>
+        <div class="kbd-row"><kbd>?</kbd><span>This shortcut reference</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main JS module -->
+<script type="module" src="js/main.js"></script>
+
+<!-- Emergency stop button wiring (new UI element, JS emergencyStop exported from playback.js) -->
+<script type="module">
+  document.getElementById('emergencyStopBtn')?.addEventListener('click', async () => {
+    const { emergencyStop } = await import('./js/playback.js');
+    emergencyStop();
+  });
+</script>
+<!-- ═══ PROFILE DIALOG ═════════════════════════════════════════════════════ -->
+<dialog id="profileDialog" aria-label="Your Profile">
+  <div class="pdlg-shell">
+    <button id="closeProfileDialog" class="pdlg-close" aria-label="Close profile">
+      <svg width="13" height="13" viewBox="0 0 13 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"><path d="M1 1l11 11M12 1L1 12"/></svg>
+    </button>
+    <div id="profileDialogBody" style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0">
+      <!-- Tab bar + panels rendered here by renderProfilePanel() -->
+      <div class="pdlg-loading">Loading…</div>
+    </div>
+  </div>
+</dialog>
+
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ASS Tests — Adaptive Session Studio</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Inter, system-ui, sans-serif;
+      background: #0d0d12;
+      color: #d8d6ce;
+      padding: 28px;
+      max-width: 760px;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
+    h1 {
+      font-family: Syne, system-ui, sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: #f0f0e8;
+      margin: 0 0 6px;
+    }
+    .subtitle {
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+      margin-bottom: 24px;
+    }
+    #status {
+      font-size: 13px;
+      color: #f0a04a;
+      margin-bottom: 16px;
+    }
+    #results { font-size: 13px; }
+    details {
+      margin-bottom: 10px;
+      background: rgba(255,255,255,0.03);
+      border: 0.5px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    summary {
+      cursor: pointer;
+      font-weight: 600;
+      padding: 10px 14px;
+      user-select: none;
+      list-style: none;
+    }
+    summary::-webkit-details-marker { display: none; }
+    ul { margin: 0; padding: 0 14px 12px 32px; list-style: none; }
+    li { margin-bottom: 4px; font-size: 12px; }
+    .error-detail {
+      color: #e05050;
+      font-size: 11px;
+      white-space: pre-wrap;
+      padding-left: 16px;
+      display: block;
+      margin-top: 2px;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+    .banner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+    .banner.pass { background: rgba(125, 200, 122, 0.12); color: #7dc87a; border: 1px solid rgba(125,200,122,0.25); }
+    .banner.fail { background: rgba(224,  80,  80, 0.12); color: #e05050; border: 1px solid rgba(224, 80, 80, 0.25); }
+  </style>
+</head>
+<body>
+  <h1>Adaptive Session Studio — Test Suite</h1>
+  <p class="subtitle">Browser-native ES module tests · no bundler required · open in any modern browser via a local server</p>
+  <div id="status">⏳ Running tests…</div>
+  <div id="results"></div>
+
+  <script type="module">
+    import { renderResults } from './harness.js';
+    import { runStateTests }     from './state.test.js';
+    import { runFunscriptTests } from './funscript.test.js';
+    import { runSubtitleTests }  from './subtitle.test.js';
+    import { runHistoryTests }   from './history.test.js';
+    import { runBlockOpsTests }  from './block-ops.test.js';
+    import { runSceneTests }     from './scenes.test.js';
+    import { runRulesEngineTests } from './rules-engine.test.js';
+    import { runPacingRampTests }  from './pacing-ramp.test.js';
+    import { runPlaybackTests }    from './playback.test.js';
+    import { runUserProfileTests } from './user-profile.test.js';
+    import { runTriggerWindowTests } from './trigger-windows.test.js';
+    import { runSafetyTests }        from './safety.test.js';
+    import { runSuggestionsTests }   from './suggestions.test.js';
+    import { runStateEngineTests }   from './state-engine.test.js';
+    import { runAiAuthoringTests }   from './ai-authoring.test.js';
+    import { runCapabilitiesTests }  from './capabilities.test.js';
+    import { runAchievementsTests }  from './achievements.test.js';
+    import { runNotifyTests }        from './notify.test.js';
+    import { runSessionModesTests }  from './session-modes.test.js';
+    import { runImportValidateTests } from './import-validate.test.js';
+    import { runMacrosTests }         from './macros.test.js';
+    import { runSessionAnalyticsTests } from './session-analytics.test.js';
+    import { runLiveControlTests }    from './live-control.test.js';
+    import { runPluginHostTests }     from './plugin-host.test.js';
+    import { runIdbStorageTests }     from './idb-storage.test.js';
+    import { runMetricsHistoryTests } from './metrics-history.test.js';
+    import { runStateBlocksTests }    from './state-blocks.test.js';
+    import { runVariablesTests }      from './variables.test.js';
+    import { runSensorBridgeTests }   from './sensor-bridge.test.js';
+    import { runContentPacksTests }   from './content-packs.test.js';
+    import { runFunscriptPatternsTests } from './funscript-patterns.test.js';
+    import { runVizBlocksTests }         from './viz-blocks.test.js';
+    import { runFullscreenHudTests }     from './fullscreen-hud.test.js';
+
+    const status  = document.getElementById('status');
+    const results = document.getElementById('results');
+
+    try {
+      const summaries = await Promise.all([
+        runStateTests(),
+        runFunscriptTests(),
+        runSubtitleTests(),
+        runHistoryTests(),
+        runBlockOpsTests(),
+        runSceneTests(),
+        runRulesEngineTests(),
+        runPacingRampTests(),
+        runPlaybackTests(),
+        runUserProfileTests(),
+        runTriggerWindowTests(),
+        runSafetyTests(),
+        runSuggestionsTests(),
+        runStateEngineTests(),
+        runAiAuthoringTests(),
+        runCapabilitiesTests(),
+        runNotifyTests(),
+        runSessionModesTests(),
+        runImportValidateTests(),
+        runMacrosTests(),
+        runSessionAnalyticsTests(),
+        runLiveControlTests(),
+        runPluginHostTests(),
+        runIdbStorageTests(),
+        runMetricsHistoryTests(),
+        runStateBlocksTests(),
+        runVariablesTests(),
+        runSensorBridgeTests(),
+        runContentPacksTests(),
+        runFunscriptPatternsTests(),
+        runVizBlocksTests(),
+        runFullscreenHudTests(),
+        runAchievementsTests(),
+      ]);
+
+      const totalPassed = summaries.reduce((s, r) => s + r.passed, 0);
+      const totalFailed = summaries.reduce((s, r) => s + r.failed, 0);
+      const total       = totalPassed + totalFailed;
+
+      if (totalFailed === 0) {
+        status.innerHTML = `<div class="banner pass">✅ All ${totalPassed} tests passed</div>`;
+      } else {
+        status.innerHTML = `<div class="banner fail">❌ ${totalFailed} failed · ${totalPassed} passed · ${total} total</div>`;
+      }
+
+      // Build results HTML
+      let html = '';
+      for (const s of summaries) {
+        const allOk = s.failed === 0;
+        const icon  = allOk ? '✅' : '❌';
+        html += `<details${allOk ? '' : ' open'}>
+  <summary>${icon} ${s.suite} — ${s.passed} / ${s.total}</summary>
+  <ul>`;
+        for (const r of s.results) {
+          html += `<li>${r.ok ? '✅' : '❌'} ${esc(r.name)}`;
+          if (!r.ok) html += `<span class="error-detail">${esc(r.error ?? '')}</span>`;
+          html += '</li>';
+        }
+        html += '</ul></details>';
+      }
+      results.innerHTML = html;
+
+    } catch (err) {
+      status.innerHTML = `<div class="banner fail">💥 Test runner crashed: ${esc(err.message)}</div>`;
+      results.innerHTML = `<pre style="color:#e05050;font-size:11px">${esc(err.stack)}</pre>`;
+    }
+
+    function esc(s) {
+      return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

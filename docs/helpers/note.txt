@@ -1,0 +1,4 @@
+If you followed the install instructions for the Apache Server, you can use these shortcuts to start/stop the server. 
+Right-click the shortcut, then "Run as administrator", in sequence, `Install` first, then `Start`.
+When you're done plying, `Stop`.
+Use `Uninstall` to remove the Apache Server from the Windows Services
